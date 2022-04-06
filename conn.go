@@ -170,6 +170,7 @@ func (c *Conn) getLogLevel() LogLevel {
 
 // Connect dials and bootstraps the nsqd connection
 // (including IDENTIFY) and returns the IdentifyResponse
+// 创建连接
 func (c *Conn) Connect() (*IdentifyResponse, error) {
 	dialer := &net.Dialer{
 		LocalAddr: c.config.LocalAddr,
@@ -183,13 +184,13 @@ func (c *Conn) Connect() (*IdentifyResponse, error) {
 	c.conn = conn.(*net.TCPConn)
 	c.r = conn
 	c.w = conn
-
+	// 发送版本号
 	_, err = c.Write(MagicV2)
 	if err != nil {
 		c.Close()
 		return nil, fmt.Errorf("[%s] failed to write magic - %s", c.addr, err)
 	}
-
+	// 发送 client metadata
 	resp, err := c.identify()
 	if err != nil {
 		return nil, err
@@ -209,6 +210,7 @@ func (c *Conn) Connect() (*IdentifyResponse, error) {
 
 	c.wg.Add(2)
 	atomic.StoreInt32(&c.readLoopRunning, 1)
+	// 读写 goroutine
 	go c.readLoop()
 	go c.writeLoop()
 	return resp, nil
