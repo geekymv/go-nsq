@@ -90,6 +90,7 @@ type Config struct {
 	initialized bool
 
 	// used to Initialize, Validate
+	// configHandlers 是接口类型的 slice
 	configHandlers []configHandler
 
 	DialTimeout time.Duration `opt:"dial_timeout" default:"1s"`
