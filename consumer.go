@@ -345,7 +345,8 @@ func (r *Consumer) ConnectToNSQLookupd(addr string) error {
 	if atomic.LoadInt32(&r.runningHandlers) == 0 {
 		return errors.New("no handlers")
 	}
-
+	// 构造 lookupd 的查询地址 http://ip:port/lookup?topic=xxx
+	// 用于查询指定 topic 的生产者所在的 nsqd 地址
 	parsedAddr, err := buildLookupAddr(addr, r.topic)
 	if err != nil {
 		return err
@@ -355,12 +356,14 @@ func (r *Consumer) ConnectToNSQLookupd(addr string) error {
 
 	r.mtx.Lock()
 	for _, x := range r.lookupdHTTPAddrs {
+		// 判断 addr 是否已经连接过
 		if x == parsedAddr {
 			r.mtx.Unlock()
 			return nil
 		}
 	}
 	r.lookupdHTTPAddrs = append(r.lookupdHTTPAddrs, parsedAddr)
+	// 初始化 lookupdHttpClient
 	if r.lookupdHttpClient == nil {
 		transport := &http.Transport{
 			DialContext: (&net.Dialer{
@@ -382,6 +385,7 @@ func (r *Consumer) ConnectToNSQLookupd(addr string) error {
 	r.mtx.Unlock()
 
 	// if this is the first one, kick off the go loop
+	// 只触发执行一次
 	if numLookupd == 1 {
 		r.queryLookupd()
 		r.wg.Add(1)
@@ -454,6 +458,7 @@ func (r *Consumer) nextLookupdEndpoint() string {
 	addr := r.lookupdHTTPAddrs[r.lookupdQueryIndex]
 	num := len(r.lookupdHTTPAddrs)
 	r.mtx.RUnlock()
+	// 采用轮询的形式获取下一个 nsqlookupd
 	r.lookupdQueryIndex = (r.lookupdQueryIndex + 1) % num
 
 	return addr
@@ -514,6 +519,7 @@ retry:
 		nsqdAddrs = discoveryFilter.Filter(nsqdAddrs)
 	}
 	for _, addr := range nsqdAddrs {
+		// 连接到 nsqd
 		err = r.ConnectToNSQD(addr)
 		if err != nil && err != ErrAlreadyConnected {
 			r.log(LogLevelError, "(%s) error connecting to nsqd - %s", addr, err)
