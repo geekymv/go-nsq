@@ -351,12 +351,12 @@ func (c *Conn) identify() (*IdentifyResponse, error) {
 	if err != nil {
 		return nil, ErrIdentify{err.Error()}
 	}
-
+	// 发送 IDENTIFY
 	err = c.WriteCommand(cmd)
 	if err != nil {
 		return nil, ErrIdentify{err.Error()}
 	}
-
+	// 读取响应
 	frameType, data, err := ReadUnpackedResponse(c)
 	if err != nil {
 		return nil, ErrIdentify{err.Error()}
@@ -408,6 +408,7 @@ func (c *Conn) identify() (*IdentifyResponse, error) {
 
 	// now that connection is bootstrapped, enable read buffering
 	// (and write buffering if it's not already capable of Flush())
+	// 包装成带缓冲的 reader writer
 	c.r = bufio.NewReader(c.r)
 	if _, ok := c.w.(flusher); !ok {
 		c.w = bufio.NewWriter(c.w)
