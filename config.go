@@ -87,6 +87,7 @@ func (s *FullJitterStrategy) setConfig(cfg *Config) {
 //
 // Use Set(option string, value interface{}) as an alternate way to set parameters
 type Config struct {
+	// 是否初始化，首字母小写只能在包内使用，用于限制只能通过 NewConfig() 方法创建实例
 	initialized bool
 
 	// used to Initialize, Validate
@@ -236,6 +237,7 @@ func (c *Config) assertInitialized() {
 
 // Validate checks that all values are within specified min/max ranges
 func (c *Config) Validate() error {
+	// 是否初始化断言
 	c.assertInitialized()
 	for _, h := range c.configHandlers {
 		if err := h.Validate(c); err != nil {
@@ -257,6 +259,7 @@ func (c *Config) setDefaults() error {
 	return nil
 }
 
+// 实现了 configHandler、defaultsHandler 接口
 type structTagsConfig struct{}
 
 // Handle options that are listed in StructTags
