@@ -191,6 +191,7 @@ func NewConsumer(topic string, channel string, config *Config) (*Consumer, error
 	}
 
 	r.wg.Add(1)
+	// 定时发送RDY
 	go r.rdyLoop()
 	return r, nil
 }
