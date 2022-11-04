@@ -213,6 +213,7 @@ func (w *Producer) MultiPublishAsync(topic string, body [][]byte, doneChan chan 
 
 // Publish synchronously publishes a message body to the specified topic, returning
 // an error if publish failed
+// 同步发送消息到指定的 topic
 func (w *Producer) Publish(topic string, body []byte) error {
 	return w.sendCommand(Publish(topic, body))
 }
@@ -249,11 +250,13 @@ func (w *Producer) DeferredPublishAsync(topic string, delay time.Duration, body 
 
 func (w *Producer) sendCommand(cmd *Command) error {
 	doneChan := make(chan *ProducerTransaction)
+	// 异步发送 command
 	err := w.sendCommandAsync(cmd, doneChan, nil)
 	if err != nil {
 		close(doneChan)
 		return err
 	}
+	// 阻塞等待
 	t := <-doneChan
 	return t.Error
 }
@@ -266,6 +269,7 @@ func (w *Producer) sendCommandAsync(cmd *Command, doneChan chan *ProducerTransac
 	defer atomic.AddInt32(&w.concurrentProducers, -1)
 
 	if atomic.LoadInt32(&w.state) != StateConnected {
+		// 建立连接
 		err := w.connect()
 		if err != nil {
 			return err
@@ -288,7 +292,9 @@ func (w *Producer) sendCommandAsync(cmd *Command, doneChan chan *ProducerTransac
 }
 
 func (w *Producer) connect() error {
+	// 获取锁
 	w.guard.Lock()
+	// defer 释放锁
 	defer w.guard.Unlock()
 
 	if atomic.LoadInt32(&w.stopFlag) == 1 {
@@ -318,9 +324,11 @@ func (w *Producer) connect() error {
 		w.log(LogLevelError, "(%s) error connecting to nsqd - %s", w.addr, err)
 		return err
 	}
+	// 更新连接状态
 	atomic.StoreInt32(&w.state, StateConnected)
 	w.closeChan = make(chan int)
 	w.wg.Add(1)
+	// 开启一个 goroutine 做 router
 	go w.router()
 
 	return nil
@@ -343,7 +351,9 @@ func (w *Producer) router() {
 	for {
 		select {
 		case t := <-w.transactionChan:
+			// 从 transactionChan 中获取一个 ProducerTransaction 放入队列中
 			w.transactions = append(w.transactions, t)
+			// 将 command 发给 nsqd
 			err := w.conn.WriteCommand(t.cmd)
 			if err != nil {
 				w.log(LogLevelError, "(%s) sending command - %s", w.conn.String(), err)
@@ -366,6 +376,7 @@ exit:
 	w.log(LogLevelInfo, "(%s) exiting router", w.conn.String())
 }
 
+// 弹出一个 ProducerTransaction
 func (w *Producer) popTransaction(frameType int32, data []byte) {
 	t := w.transactions[0]
 	w.transactions = w.transactions[1:]
