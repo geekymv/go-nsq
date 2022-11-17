@@ -1137,6 +1137,7 @@ func (r *Consumer) AddConcurrentHandlers(handler Handler, concurrency int) {
 
 	atomic.AddInt32(&r.runningHandlers, int32(concurrency))
 	for i := 0; i < concurrency; i++ {
+		// 根据并发度，启动多个 goroutine 执行
 		go r.handlerLoop(handler)
 	}
 }
@@ -1145,11 +1146,12 @@ func (r *Consumer) handlerLoop(handler Handler) {
 	r.log(LogLevelDebug, "starting Handler")
 
 	for {
+		// 从 channel 中获取消息
 		message, ok := <-r.incomingMessages
 		if !ok {
 			goto exit
 		}
-
+		// 判断是否达到最大消费次数
 		if r.shouldFailMessage(message, handler) {
 			message.Finish()
 			continue
@@ -1159,6 +1161,7 @@ func (r *Consumer) handlerLoop(handler Handler) {
 		if err != nil {
 			r.log(LogLevelError, "Handler returned error (%s) for msg %s", err, message.ID)
 			if !message.IsAutoResponseDisabled() {
+				// 消费者处理消息失败，发送命令给 NSQ 将消息重新入队
 				message.Requeue(-1)
 			}
 			continue

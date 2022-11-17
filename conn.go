@@ -515,12 +515,13 @@ func (c *Conn) auth(secret string) error {
 }
 
 func (c *Conn) readLoop() {
+	// 消息委托处理
 	delegate := &connMessageDelegate{c}
 	for {
 		if atomic.LoadInt32(&c.closeFlag) == 1 {
 			goto exit
 		}
-
+		// 读取消息
 		frameType, data, err := ReadUnpackedResponse(c)
 		if err != nil {
 			if err == io.EOF && atomic.LoadInt32(&c.closeFlag) == 1 {
@@ -536,6 +537,7 @@ func (c *Conn) readLoop() {
 		if frameType == FrameTypeResponse && bytes.Equal(data, []byte("_heartbeat_")) {
 			c.log(LogLevelDebug, "heartbeat received")
 			c.delegate.OnHeartbeat(c)
+			// 发送心跳响应
 			err := c.WriteCommand(Nop())
 			if err != nil {
 				c.log(LogLevelError, "IO error - %s", err)
@@ -549,6 +551,7 @@ func (c *Conn) readLoop() {
 		case FrameTypeResponse:
 			c.delegate.OnResponse(c, data)
 		case FrameTypeMessage:
+			// 对消息反序列化
 			msg, err := DecodeMessage(data)
 			if err != nil {
 				c.log(LogLevelError, "IO error - %s", err)
@@ -560,7 +563,7 @@ func (c *Conn) readLoop() {
 
 			atomic.AddInt64(&c.messagesInFlight, 1)
 			atomic.StoreInt64(&c.lastMsgTimestamp, time.Now().UnixNano())
-
+			// 将消息放入 incomingMessages 通道
 			c.delegate.OnMessage(c, msg)
 		case FrameTypeError:
 			c.log(LogLevelError, "protocol error - %s", data)
@@ -734,7 +737,7 @@ func (c *Conn) onMessageFinish(m *Message) {
 
 func (c *Conn) onMessageRequeue(m *Message, delay time.Duration, backoff bool) {
 	if delay == -1 {
-		// linear delay
+		// linear delay 延迟时间根据尝试次数递增
 		delay = c.config.DefaultRequeueDelay * time.Duration(m.Attempts)
 		// bound the requeueDelay to configured max
 		if delay > c.config.MaxRequeueDelay {
