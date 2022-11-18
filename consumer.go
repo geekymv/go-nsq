@@ -113,7 +113,7 @@ type Consumer struct {
 	needRDYRedistributed int32
 
 	backoffMtx sync.Mutex
-
+	// 存放 nsqd	发送过来的消息，交给 handler 处理
 	incomingMessages chan *Message
 
 	rdyRetryMtx    sync.Mutex
@@ -520,7 +520,7 @@ retry:
 		nsqdAddrs = discoveryFilter.Filter(nsqdAddrs)
 	}
 	for _, addr := range nsqdAddrs {
-		// 连接到 nsqd
+		// 连接到 nsqd，一个 Consumer 可以连接到多个 nsqd
 		err = r.ConnectToNSQD(addr)
 		if err != nil && err != ErrAlreadyConnected {
 			r.log(LogLevelError, "(%s) error connecting to nsqd - %s", addr, err)
@@ -586,7 +586,7 @@ func (r *Consumer) ConnectToNSQD(addr string) error {
 		r.mtx.Unlock()
 		conn.Close()
 	}
-
+	// 与 nsqd 建立连接
 	resp, err := conn.Connect()
 	if err != nil {
 		cleanupConnection()
@@ -600,7 +600,7 @@ func (r *Consumer) ConnectToNSQD(addr string) error {
 				conn.String(), resp.MaxRdyCount, r.getMaxInFlight())
 		}
 	}
-
+	// 发送 SUB 命令
 	cmd := Subscribe(r.topic, r.channel)
 	err = conn.WriteCommand(cmd)
 	if err != nil {
@@ -1156,7 +1156,7 @@ func (r *Consumer) handlerLoop(handler Handler) {
 			message.Finish()
 			continue
 		}
-
+		// 执行 handler 处理消息（业务逻辑）
 		err := handler.HandleMessage(message)
 		if err != nil {
 			r.log(LogLevelError, "Handler returned error (%s) for msg %s", err, message.ID)
@@ -1168,6 +1168,7 @@ func (r *Consumer) handlerLoop(handler Handler) {
 		}
 
 		if !message.IsAutoResponseDisabled() {
+			// 发送 FIN 命令给 nsqd，表示消息处理成功
 			message.Finish()
 		}
 	}
