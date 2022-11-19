@@ -58,7 +58,7 @@ type Conn struct {
 	mtx sync.Mutex
 
 	config *Config
-
+	// 实际的 TCP 连接
 	conn    *net.TCPConn
 	tlsConn *tls.Conn
 	addr    string
@@ -176,7 +176,7 @@ func (c *Conn) Connect() (*IdentifyResponse, error) {
 		LocalAddr: c.config.LocalAddr,
 		Timeout:   c.config.DialTimeout,
 	}
-
+	// 建立 tcp 连接
 	conn, err := dialer.Dial("tcp", c.addr)
 	if err != nil {
 		return nil, err

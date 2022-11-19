@@ -133,7 +133,7 @@ type Consumer struct {
 	wg              sync.WaitGroup
 	runningHandlers int32
 	stopFlag        int32
-	connectedFlag   int32
+	connectedFlag   int32 // 连接到 nsqd 的状态
 	stopHandler     sync.Once
 	exitHandler     sync.Once
 
@@ -558,7 +558,7 @@ func (r *Consumer) ConnectToNSQD(addr string) error {
 	}
 
 	atomic.StoreInt32(&r.connectedFlag, 1)
-
+	// 创建连接
 	conn := NewConn(addr, &r.config, &consumerConnDelegate{r})
 	conn.SetLoggerLevel(r.getLogLevel())
 	format := fmt.Sprintf("%3d [%s/%s] (%%s)", r.id, r.topic, r.channel)
@@ -566,6 +566,8 @@ func (r *Consumer) ConnectToNSQD(addr string) error {
 		conn.SetLoggerForLevel(r.logger[index], LogLevel(index), format)
 	}
 	r.mtx.Lock()
+
+	// 判断 Consumer 与 addr 是否在连接 或 已经建立了连接
 	_, pendingOk := r.pendingConnections[addr]
 	_, ok := r.connections[addr]
 	if ok || pendingOk {
@@ -586,7 +588,7 @@ func (r *Consumer) ConnectToNSQD(addr string) error {
 		r.mtx.Unlock()
 		conn.Close()
 	}
-	// 与 nsqd 建立连接
+	// 真正与 nsqd 建立连接
 	resp, err := conn.Connect()
 	if err != nil {
 		cleanupConnection()
