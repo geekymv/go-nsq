@@ -688,8 +688,10 @@ func (r *Consumer) DisconnectFromNSQLookupd(addr string) error {
 	return nil
 }
 
+// 接收到的消息
 func (r *Consumer) onConnMessage(c *Conn, msg *Message) {
 	atomic.AddUint64(&r.messagesReceived, 1)
+	// 将消息放入 channel 队列中
 	r.incomingMessages <- msg
 }
 

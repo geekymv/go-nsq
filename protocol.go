@@ -62,6 +62,7 @@ func ReadResponse(r io.Reader) ([]byte, error) {
 	}
 	// message binary data
 	buf := make([]byte, msgSize)
+	// 会阻塞，直到读满为止
 	_, err = io.ReadFull(r, buf)
 	if err != nil {
 		return nil, err
@@ -84,7 +85,7 @@ func UnpackResponse(response []byte) (int32, []byte, error) {
 	if len(response) < 4 {
 		return -1, nil, errors.New("length of response is too small")
 	}
-
+	// frameType, msg
 	return int32(binary.BigEndian.Uint32(response)), response[4:], nil
 }
 
@@ -92,6 +93,7 @@ func UnpackResponse(response []byte) (int32, []byte, error) {
 // TCP connection according to the NSQ TCP protocol spec and
 // returns the frameType, data or error
 func ReadUnpackedResponse(r io.Reader) (int32, []byte, error) {
+	// 读取数据
 	resp, err := ReadResponse(r)
 	if err != nil {
 		return -1, nil, err

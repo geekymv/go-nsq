@@ -515,6 +515,7 @@ func (c *Conn) auth(secret string) error {
 	return nil
 }
 
+// 读取服务端发送过来的数据
 func (c *Conn) readLoop() {
 	// 消息委托处理
 	delegate := &connMessageDelegate{c}
@@ -551,8 +552,8 @@ func (c *Conn) readLoop() {
 		switch frameType {
 		case FrameTypeResponse:
 			c.delegate.OnResponse(c, data)
-		case FrameTypeMessage:
-			// 对消息反序列化
+		case FrameTypeMessage: // frameType 数据类型是消息
+			// 对消息反序列化（解码）
 			msg, err := DecodeMessage(data)
 			if err != nil {
 				c.log(LogLevelError, "IO error - %s", err)
@@ -564,7 +565,7 @@ func (c *Conn) readLoop() {
 
 			atomic.AddInt64(&c.messagesInFlight, 1)
 			atomic.StoreInt64(&c.lastMsgTimestamp, time.Now().UnixNano())
-			// 将消息放入 incomingMessages 通道
+			// 消费者将消息放入 incomingMessages 通道
 			c.delegate.OnMessage(c, msg)
 		case FrameTypeError:
 			c.log(LogLevelError, "protocol error - %s", data)
