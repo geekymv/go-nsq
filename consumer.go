@@ -602,8 +602,9 @@ func (r *Consumer) ConnectToNSQD(addr string) error {
 				conn.String(), resp.MaxRdyCount, r.getMaxInFlight())
 		}
 	}
-	// 发送 SUB 命令
+	// 构造 SUB 命令，订阅 topic/channel 消息
 	cmd := Subscribe(r.topic, r.channel)
+	// 发送 cmd
 	err = conn.WriteCommand(cmd)
 	if err != nil {
 		cleanupConnection()

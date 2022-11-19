@@ -33,10 +33,14 @@ func (c *Command) String() string {
 //
 // It is suggested that the target Writer is buffered
 // to avoid performing many system calls.
+// 客户端发送消息给服务端
+// SUB <topic_name> <channel_name>\n
+// IDENTIFY\n
+// [ 4-byte size in bytes ][ N-byte JSON data ]
 func (c *Command) WriteTo(w io.Writer) (int64, error) {
 	var total int64
 	var buf [4]byte
-
+	// 发送 Command 名称，比如 IDENTIFY
 	n, err := w.Write(c.Name)
 	total += int64(n)
 	if err != nil {
@@ -44,18 +48,20 @@ func (c *Command) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	for _, param := range c.Params {
+		// 发送空格
 		n, err := w.Write(byteSpace)
 		total += int64(n)
 		if err != nil {
 			return total, err
 		}
+		// 发送参数
 		n, err = w.Write(param)
 		total += int64(n)
 		if err != nil {
 			return total, err
 		}
 	}
-
+	// 换行\n
 	n, err = w.Write(byteNewLine)
 	total += int64(n)
 	if err != nil {
@@ -65,11 +71,13 @@ func (c *Command) WriteTo(w io.Writer) (int64, error) {
 	if c.Body != nil {
 		bufs := buf[:]
 		binary.BigEndian.PutUint32(bufs, uint32(len(c.Body)))
+		// 发送消息大小
 		n, err := w.Write(bufs)
 		total += int64(n)
 		if err != nil {
 			return total, err
 		}
+		// 发送消息内容
 		n, err = w.Write(c.Body)
 		total += int64(n)
 		if err != nil {
@@ -89,6 +97,7 @@ func (c *Command) WriteTo(w io.Writer) (int64, error) {
 // See http://nsq.io/clients/tcp_protocol_spec.html#identify for information
 // on the supported options
 func Identify(js map[string]interface{}) (*Command, error) {
+	// 发送内容的序列化
 	body, err := json.Marshal(js)
 	if err != nil {
 		return nil, err

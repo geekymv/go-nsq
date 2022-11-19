@@ -70,8 +70,8 @@ type Conn struct {
 	logFmt   []string
 	logGuard sync.RWMutex
 
-	r io.Reader
-	w io.Writer
+	r io.Reader // *net.TCPConn
+	w io.Writer // *net.TCPConn
 
 	cmdChan         chan *Command
 	msgResponseChan chan *msgResponse
@@ -190,7 +190,7 @@ func (c *Conn) Connect() (*IdentifyResponse, error) {
 		c.Close()
 		return nil, fmt.Errorf("[%s] failed to write magic - %s", c.addr, err)
 	}
-	// 发送 client metadata
+	// 发送 IDENTIFY client metadata
 	resp, err := c.identify()
 	if err != nil {
 		return nil, err
@@ -211,8 +211,8 @@ func (c *Conn) Connect() (*IdentifyResponse, error) {
 	c.wg.Add(2)
 	atomic.StoreInt32(&c.readLoopRunning, 1)
 	// 读写 goroutine
-	go c.readLoop()
-	go c.writeLoop()
+	go c.readLoop()  // 读
+	go c.writeLoop() // 写
 	return resp, nil
 }
 
@@ -347,6 +347,7 @@ func (c *Conn) identify() (*IdentifyResponse, error) {
 		ci["output_buffer_timeout"] = int64(c.config.OutputBufferTimeout / time.Millisecond)
 	}
 	ci["msg_timeout"] = int64(c.config.MsgTimeout / time.Millisecond)
+	// 封装 Command
 	cmd, err := Identify(ci)
 	if err != nil {
 		return nil, ErrIdentify{err.Error()}
@@ -521,7 +522,7 @@ func (c *Conn) readLoop() {
 		if atomic.LoadInt32(&c.closeFlag) == 1 {
 			goto exit
 		}
-		// 读取消息
+		// 读取 nsqd 服务端发送过来的数据
 		frameType, data, err := ReadUnpackedResponse(c)
 		if err != nil {
 			if err == io.EOF && atomic.LoadInt32(&c.closeFlag) == 1 {
