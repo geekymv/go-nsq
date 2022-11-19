@@ -169,7 +169,7 @@ func NewConsumer(topic string, channel string, config *Config) (*Consumer, error
 		logger:      make([]logger, LogLevelMax+1),
 		logLvl:      LogLevelInfo,
 		maxInFlight: int32(config.MaxInFlight),
-
+		// 没有缓冲的 channel
 		incomingMessages: make(chan *Message),
 
 		rdyRetryTimers:     make(map[string]*time.Timer),
@@ -1161,12 +1161,12 @@ func (r *Consumer) handlerLoop(handler Handler) {
 			message.Finish()
 			continue
 		}
-		// 执行 handler 处理消息（业务逻辑）
+		// 执行 handler 处理消息（实际我们开发的业务逻辑代码）
 		err := handler.HandleMessage(message)
 		if err != nil {
 			r.log(LogLevelError, "Handler returned error (%s) for msg %s", err, message.ID)
 			if !message.IsAutoResponseDisabled() {
-				// 消费者处理消息失败，发送命令给 NSQ 将消息重新入队
+				// 消费者处理消息失败，发送命令给 nsqd 将消息重新入队
 				message.Requeue(-1)
 			}
 			continue

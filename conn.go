@@ -73,7 +73,8 @@ type Conn struct {
 	r io.Reader // *net.TCPConn
 	w io.Writer // *net.TCPConn
 
-	cmdChan         chan *Command
+	cmdChan chan *Command
+	// 消息响应channel
 	msgResponseChan chan *msgResponse
 	exitChan        chan int
 	drainReady      chan int
@@ -99,7 +100,8 @@ func NewConn(addr string, config *Config, delegate ConnDelegate) *Conn {
 		maxRdyCount:      2500,
 		lastMsgTimestamp: time.Now().UnixNano(),
 
-		cmdChan:         make(chan *Command),
+		cmdChan: make(chan *Command),
+		// 不带缓冲的channel
 		msgResponseChan: make(chan *msgResponse),
 		exitChan:        make(chan int),
 		drainReady:      make(chan int),
@@ -608,6 +610,7 @@ func (c *Conn) writeLoop() {
 				continue
 			}
 		case resp := <-c.msgResponseChan:
+			// 消息响应 channel
 			// Decrement this here so it is correct even if we can't respond to nsqd
 			msgsInFlight := atomic.AddInt64(&c.messagesInFlight, -1)
 
@@ -624,7 +627,7 @@ func (c *Conn) writeLoop() {
 					c.delegate.OnContinue(c)
 				}
 			}
-
+			// 将 cmd 发送给 nsqd
 			err := c.WriteCommand(resp.cmd)
 			if err != nil {
 				c.log(LogLevelError, "error sending command %s - %s", resp.cmd, err)
@@ -734,6 +737,7 @@ func (c *Conn) waitForCleanup() {
 }
 
 func (c *Conn) onMessageFinish(m *Message) {
+	// 封装FIN，表示消息处理成功
 	c.msgResponseChan <- &msgResponse{msg: m, cmd: Finish(m.ID), success: true}
 }
 
