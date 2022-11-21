@@ -1167,7 +1167,7 @@ func (r *Consumer) handlerLoop(handler Handler) {
 		if err != nil {
 			r.log(LogLevelError, "Handler returned error (%s) for msg %s", err, message.ID)
 			if !message.IsAutoResponseDisabled() {
-				// 消费者处理消息失败，发送命令给 nsqd 将消息重新入队
+				// 消费者处理消息失败，发送命令给 nsqd 将消息重新入队，将消息重发
 				message.Requeue(-1)
 			}
 			continue
