@@ -130,7 +130,8 @@ type Consumer struct {
 	lookupdQueryIndex  int
 	lookupdHttpClient  *http.Client
 
-	wg              sync.WaitGroup
+	wg sync.WaitGroup
+	// 执行 handler 的 goroutine 个数
 	runningHandlers int32
 	stopFlag        int32
 	connectedFlag   int32 // 连接到 nsqd 的状态

@@ -62,7 +62,7 @@ type Conn struct {
 	conn    *net.TCPConn
 	tlsConn *tls.Conn
 	addr    string
-
+	// 连接委托（区分producer 和 consumer）
 	delegate ConnDelegate
 
 	logger   []logger
@@ -750,6 +750,7 @@ func (c *Conn) onMessageRequeue(m *Message, delay time.Duration, backoff bool) {
 			delay = c.config.MaxRequeueDelay
 		}
 	}
+	// 封装REQ，表示需要 nsqd 将消息重新入队
 	c.msgResponseChan <- &msgResponse{msg: m, cmd: Requeue(m.ID, delay), success: false, backoff: backoff}
 }
 

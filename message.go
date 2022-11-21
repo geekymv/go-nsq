@@ -23,11 +23,12 @@ type Message struct {
 	Attempts  uint16
 
 	NSQDAddress string
-
+	// 消息回调委托
 	Delegate MessageDelegate
 
 	autoResponseDisabled int32
-	responded            int32
+	// 消息响应状态
+	responded int32
 }
 
 // NewMessage creates a Message, initializes some metadata,
