@@ -20,7 +20,8 @@ type Message struct {
 	ID        MessageID
 	Body      []byte
 	Timestamp int64
-	Attempts  uint16
+	// 尝试次数，每次发送给消费者都会增加1，由服务端nsqd维护
+	Attempts uint16
 
 	NSQDAddress string
 	// 消息回调委托

@@ -37,8 +37,9 @@ type AuthResponse struct {
 }
 
 type msgResponse struct {
-	msg     *Message
-	cmd     *Command
+	msg *Message
+	cmd *Command
+	// 表示消息是否处理成功
 	success bool
 	backoff bool
 }
